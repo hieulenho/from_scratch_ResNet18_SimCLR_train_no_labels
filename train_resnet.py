@@ -43,6 +43,8 @@ def _maybe_channels_last(x: torch.Tensor, device: torch.device) -> torch.Tensor:
     return x
 
 
+
+
 def _save_simclr_ckpt(path: str, epoch: int, model: nn.Module, optimizer, scheduler, args):
     torch.save(
         {
