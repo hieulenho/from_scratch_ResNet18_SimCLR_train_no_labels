@@ -1,0 +1,29 @@
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+powershell -ExecutionPolicy Bypass -File
+.\scripts\run_end_to_end.ps1 -Engine hybrid
+.\scripts\run_platform_v3.ps1 -BuildLarge1000
+.\scripts\run_large_benchmark.ps1 -Nodes 1000 -Budget 32 -Mode hybrid
+.\scripts\run_large_benchmark.ps1 -Nodes 1000 -Budget 32 -Mode approx_anytime
+.\scripts\run_api.ps1
+
+Mở trình duyệt tại:
+
+http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/static/index.html
+
+Nếu máy bạn có license Gurobi:
+
+.\scripts\install_gurobi.ps1
+python .\scripts\run_end_to_end.py --engine exact_max_margin --exact-backend gurobi
+
+Pipeline nhanh:
+
+.\scripts\run_platform_v3.ps1 -BuildBase
+.\scripts\run_platform_v3.ps1 -BuildLarge1000
+.\scripts\run_platform_v3.ps1 -SolveHybrid
+.\scripts\run_platform_v3.ps1 -SolveApprox
+
+Trong repo, sau khi chạy xong bạn xem report ở:
+
+artifacts\reports\<solve_id>\evaluation.html
+artifacts\reports\<solve_id>\evaluation.json

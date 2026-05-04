@@ -1,2 +1,42 @@
 python train_resnet.py --mode linear-eval --ckpt ./checkpoints/simclr_epoch_200.pt --data-root ./data --num-workers 0 --linear-epochs 20
 python train_resnet.py --mode simclr --dataset stl10 --data-root ./data --batch-size 512 --num-workers 1 --log-every 50 --save-every 10
+
+python yolov5_from_scratch/tools/check_dataset.py --data yolov5_from_scratch/datasets/coco2017/dataset.yaml
+python yolov5_from_scratch/tools/train_one_step.py --rebuild-cache
+
+
+python yolov5_from_scratch/utils/train.py --data yolov5_from_scratch/datasets/coco2017/dataset.yaml --epochs 100 --batch-size 16 --img-size 640 --workers 4 --cache-labels --val --amp
+python yolov5_from_scratch/utils/train.py --resume yolov5_from_scratch/runs/train/exp/weights/last.pt --val
+
+-125
+
+Expand-Archive robust_reward_design_full_lab.zip -Force
+cd robust_reward_design_lab
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:PYTHONPATH = "$PWD\src"
+streamlit run app.py
+
+
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+
+ssh -p 7722 tqviet@hpc01.vast.vn "mkdir -p ~/projects/yolov5_from_scratch"
+ssh -p 7722 tqviet@hpc01.vast.vn "ls -lh ~/projects"
+
+rsync -avhP --partial --append-verify \
+  -e "ssh -p 7722" \
+  /d/yolov5_from_scratch/ \
+  tqviet@hpc01.vast.vn:~/projects/yolov5_from_scratch/
+
+cd /datausers/cic/tqviet/yolov5_from_scratch/yolov5_from_scratch/yolov5_from_scratch
+python3 utils/train.py \
+  --data datasets/coco2017/dataset.yaml \
+  --epochs 100 \
+  --batch-size 32 \
+  --img-size 640 \
+  --workers 8 \
+  --cache-labels \
+  --val \
+  --amp \
+  --device cuda:0
