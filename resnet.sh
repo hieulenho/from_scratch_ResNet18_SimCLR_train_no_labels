@@ -3,60 +3,69 @@
 #PBS -j oe
 #PBS -m abe
 #PBS -M hieulenho8@gmail.com
+#PBS -q long_gpu
+#PBS -l select=1:ncpus=1:ngpus=1:mem=24G
 
-# 3 may, moi may 1 GPU P100 16GB
-#PBS -q para_gpu
-#PBS -l select=3:ncpus=8:ngpus=1:mpiprocs=1:mem=32G
-
-cd "$PBS_O_WORKDIR"
-
-# Neu server can load module/venv thi mo comment:
-# module load cuda/11.8
-# source ~/venvs/torch/bin/activate
-
-export OMP_NUM_THREADS=2
-
-UNIQUE_NODEFILE=${PBS_O_WORKDIR}/pbs_unique_nodes_${PBS_JOBID}.txt
-sort -u "$PBS_NODEFILE" > "$UNIQUE_NODEFILE"
-
-export MASTER_ADDR=$(head -n 1 "$UNIQUE_NODEFILE")
-export MASTER_PORT=${MASTER_PORT:-29500}
-export WORLD_SIZE=$(wc -l < "$UNIQUE_NODEFILE")
+cd "$PBS_O_WORKDIR" || exit 1
 
 mkdir -p checkpoints logs
 
-echo "PBS_NODEFILE=$PBS_NODEFILE"
-echo "UNIQUE_NODEFILE=$UNIQUE_NODEFILE"
-echo "MASTER_ADDR=$MASTER_ADDR"
-echo "MASTER_PORT=$MASTER_PORT"
-echo "WORLD_SIZE=$WORLD_SIZE"
-echo "Nodes:"
-cat "$UNIQUE_NODEFILE"
-echo "Python:"
-which python
-python --version
+LOG_FILE="logs/${PBS_JOBNAME}_${PBS_JOBID}.log"
+exec > "$LOG_FILE" 2>&1
+
+set -ex
+
+PYTHON=/opt/apps/python/3.8.10/bin/python3
+export PATH=/opt/apps/python/3.8.10/bin:$PATH
+export OMP_NUM_THREADS=1
+
+echo "===== JOB INFO ====="
+echo "Job ID: $PBS_JOBID"
+echo "Job name: $PBS_JOBNAME"
+echo "Workdir: $PBS_O_WORKDIR"
+echo "Node: $(hostname)"
 echo "Start time: $(date)"
+echo "Current dir: $(pwd)"
 
-mpirun -np "$WORLD_SIZE" -ppn 1 -f "$UNIQUE_NODEFILE" \
-  python train_resnet.py \
-    --mode pretrain \
-    --distributed \
-    --arch resnet50 \
-    --dataset stl10 \
-    --data-root ./data \
-    --image-size 96 \
-    --epochs 800 \
-    --batch-size 256 \
-    --optimizer lars \
-    --lr 0.9 \
-    --warmup-epochs 40 \
-    --weight-decay 1e-4 \
-    --proj-layers 3 \
-    --proj-dim 128 \
-    --temperature 0.2 \
-    --num-workers 6 \
-    --out-dir ./checkpoints \
-    --save-every 20 \
-    --log-every 20
+echo "===== FILE CHECK ====="
+ls -lah
+test -f train_resnet.py
+test -f dataset.py
+test -f ssl_simclr.py
+test -d resnet18
+echo "===== PYTHON ====="
+echo "PYTHON=$PYTHON"
+$PYTHON --version
+$PYTHON -c "import sys; print(sys.executable)"
 
+echo "===== GPU ====="
+nvidia-smi || true
+
+echo "===== TORCH/CUDA ====="
+$PYTHON -c "import torch; print('torch=', torch.__version__); print('cuda=', torch.cuda.is_available()); print('gpu=', torch.cuda.get_device_name(0) if torch.c$
+
+echo "===== START TRAIN ====="
+
+$PYTHON train_resnet.py \
+  --mode pretrain \
+  --arch resnet50 \
+  --dataset stl10 \
+  --data-root ./data \
+  --download \
+  --image-size 96 \
+  --epochs 300 \
+  --batch-size 128 \
+  --optimizer lars \
+  --lr 0.3 \
+  --warmup-epochs 15 \
+  --weight-decay 1e-4 \
+  --proj-layers 3 \
+  --proj-dim 128 \
+  --temperature 0.2 \
+  --num-workers 1 \
+  --out-dir ./checkpoints \
+  --save-every 20 \
+  --log-every 20
+
+echo "===== END TRAIN ====="
 echo "End time: $(date)"
